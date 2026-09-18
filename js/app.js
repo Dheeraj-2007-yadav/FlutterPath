@@ -25,6 +25,9 @@ const App = {
     window.addEventListener('hashchange', () => {
       this.navigate(window.location.hash || '#/');
     });
+    window.addEventListener('resize', () => {
+      this.syncSearchPanelPosition();
+    });
     document.addEventListener('click', (e) => {
       if (this.isDropdownOpen || this.isMobileMenuOpen || this.isSearchOpen) {
         const navbar = document.getElementById('navbar');
@@ -80,6 +83,7 @@ const App = {
   toggleTheme(e) {
     if (e) e.stopPropagation();
     const html = document.documentElement;
+    const wasSearchOpen = this.isSearchOpen;
     if (html.classList.contains('dark')) {
       html.classList.remove('dark');
       localStorage.setItem('fp_theme', 'light');
@@ -88,16 +92,56 @@ const App = {
       localStorage.setItem('fp_theme', 'dark');
     }
     this.renderNavbar();
+
+    if (wasSearchOpen) {
+      requestAnimationFrame(() => {
+        this.syncSearchPanelPosition();
+        const input = document.getElementById('quickSearchInput');
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      });
+    }
   },
 
   // ── Navbar ───────────────────────────────────────────────────────────────
+  syncSearchPanelPosition() {
+    const panel = document.getElementById('quickSearchPanel');
+    if (!panel) return;
+
+    const isMobile = window.innerWidth < 640;
+
+    if (isMobile) {
+      panel.style.position = 'fixed';
+      panel.style.left = '0.5rem';
+      panel.style.right = '0.5rem';
+      panel.style.top = '4.25rem';
+      panel.style.width = 'auto';
+      panel.style.maxWidth = 'calc(100vw - 1rem)';
+      panel.style.transform = 'none';
+      panel.style.marginTop = '0';
+      panel.style.zIndex = '60';
+    } else {
+      panel.style.position = 'absolute';
+      panel.style.left = 'auto';
+      panel.style.right = '0';
+      panel.style.top = '100%';
+      panel.style.width = '22rem';
+      panel.style.maxWidth = '22rem';
+      panel.style.transform = 'none';
+      panel.style.marginTop = '0.75rem';
+      panel.style.zIndex = '50';
+    }
+  },
+
   renderNavbar() {
     const navbar = document.getElementById('navbar');
     const user = Store.getUser();
     const dark = this.isDark();
     const dropdownOpen = this.isDropdownOpen ? 'block' : 'hidden';
-    const mobileMenuOpen = this.isMobileMenuOpen ? 'block' : 'hidden';
-    const searchOpen = this.isSearchOpen ? 'block' : 'hidden';
+    const searchPanelClass = this.isSearchOpen ? 'search-panel is-visible' : 'search-panel';
+    const mobileMenuClass = this.isMobileMenuOpen ? 'mobile-menu-panel mobile-menu-open' : 'mobile-menu-panel';
 
     const themeIcon = dark
       ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>`
@@ -105,86 +149,82 @@ const App = {
 
     navbar.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-50">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <a href="#/" class="flex-shrink-0 flex items-center group">
-              <span class="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">FlutterPath</span>
+        <div class="flex h-16 items-center justify-between">
+          <div class="flex items-center gap-6">
+            <a href="#/" class="flex items-center">
+              <span class="text-2xl font-black tracking-[-0.06em] text-blue-600 dark:text-blue-400">FlutterPath</span>
             </a>
-            <div class="hidden md:ml-8 md:flex md:space-x-6">
-              <a href="#/roadmap" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-semibold transition">Roadmap</a>
-              <a href="#/project" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-semibold transition">Capstone</a>
-            </div>
+
+            <nav class="hidden items-center gap-2 md:flex">
+              <a href="#/roadmap" class="rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-400">Roadmap</a>
+              <a href="#/project" class="rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-400">Capstone</a>
+            </nav>
           </div>
 
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 sm:gap-3">
             <div class="relative">
               <button onclick="App.toggleSearchPanel(event)" title="Search lessons"
-                class="p-2 rounded-xl text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-600 dark:hover:text-blue-400">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
               </button>
 
-              <div class="${searchOpen} absolute right-0 top-full mt-3 w-[320px] max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-gray-900 shadow-[0_20px_40px_rgba(15,23,42,0.18)] ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden z-50">
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+              <div id="quickSearchPanel" class="${searchPanelClass} absolute top-full right-0 mt-3 rounded-2xl border border-slate-200 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/80 dark:border-slate-700 dark:bg-slate-900 dark:ring-slate-800 overflow-hidden z-50">
+                <div class="p-3 border-b border-slate-200 dark:border-slate-700">
                   <div class="relative">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input id="quickSearchInput" type="text" placeholder="Search lessons..."
-                      class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                       oninput="App.handleQuickSearch(this.value)">
                   </div>
                 </div>
-                <div id="quickSearchResults" class="max-h-80 overflow-y-auto">
-                  <p class="p-4 text-sm text-gray-500 dark:text-gray-400">Type to search all lessons.</p>
+                <div id="quickSearchResults" class="max-h-80 overflow-y-auto bg-white dark:bg-slate-900">
+                  <p class="p-4 text-sm text-slate-500 dark:text-slate-400">Type to search all lessons.</p>
                 </div>
               </div>
             </div>
 
-            <!-- Theme toggle -->
             <button onclick="App.toggleTheme(event)" title="Toggle theme"
-              class="p-2 rounded-xl text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-600 dark:hover:text-blue-400">
               ${themeIcon}
             </button>
 
-            <!-- Desktop auth -->
-            <div class="hidden md:flex items-center">
+            <div class="hidden items-center md:flex">
               ${user ? `
-                <div class="relative ml-3">
+                <div class="relative ml-1">
                   <button onclick="App.toggleDropdown(event)" type="button"
-                    class="flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-lg border-2 border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800 transition shadow-sm">
+                    class="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-black text-white shadow-md ring-2 ring-white dark:ring-slate-900">
                       ${user.username.charAt(0).toUpperCase()}
                     </div>
                   </button>
-                  <div class="${dropdownOpen} absolute right-0 top-full mt-2 w-60 overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-[0_18px_40px_rgba(15,23,42,0.18)] ring-1 ring-black/5 dark:ring-white/10 z-50">
-                    <div class="px-4 pt-4 pb-3 bg-gray-50/80 dark:bg-gray-900/60 border-b border-gray-200/80 dark:border-gray-700/80">
-                      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">Signed in as</p>
-                      <p class="mt-2 text-sm font-bold leading-5 text-gray-900 dark:text-white break-all">${user.username}</p>
+                  <div class="${dropdownOpen} absolute right-0 top-full mt-3 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.18)] dark:border-slate-700 dark:bg-slate-900 z-50">
+                    <div class="border-b border-slate-200 bg-slate-50 px-4 pb-3 pt-4 dark:border-slate-700 dark:bg-slate-950/70">
+                      <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Signed in as</p>
+                      <p class="mt-2 break-all text-sm font-bold text-slate-900 dark:text-white">${user.username}</p>
                     </div>
                     <div class="py-1.5">
-                      <a href="#/dashboard" onclick="App.closeMenus()"
-                        class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-700 dark:hover:text-blue-300 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                      <a href="#/dashboard" onclick="App.closeMenus()" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-400">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                         Dashboard
                       </a>
                     </div>
-                    <div class="border-t border-gray-200/80 dark:border-gray-700/80 py-1.5">
-                      <button onclick="App.handleLogout()"
-                        class="flex items-center gap-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <div class="border-t border-slate-200 py-1.5 dark:border-slate-700">
+                      <button onclick="App.handleLogout()" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                         Logout
                       </button>
                     </div>
                   </div>
                 </div>
               ` : `
-                <a href="#/login" class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md transition transform hover:-translate-y-0.5">Sign In</a>
+                <a href="#/login" class="ml-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition hover:brightness-110">Sign In</a>
               `}
             </div>
 
-            <!-- Mobile hamburger -->
             <div class="flex items-center md:hidden">
               <button onclick="App.toggleMobileMenu(event)" type="button"
-                class="inline-flex items-center justify-center p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition">
-                <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-600 dark:hover:text-blue-400">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                 </svg>
               </button>
@@ -193,36 +233,38 @@ const App = {
         </div>
       </div>
 
-      <!-- Mobile Menu -->
-      <div class="${mobileMenuOpen} md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-xl absolute w-full z-40">
-        <div class="pt-3 pb-4 space-y-1">
-          <a href="#/roadmap" onclick="App.closeMenus()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-bold text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 hover:border-blue-500 transition">Roadmap</a>
-          <button type="button" onclick="App.toggleSearchPanel(event); App.closeMenus();" class="w-full text-left pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-bold text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 hover:border-blue-500 transition">Search</button>
-          <a href="#/project" onclick="App.closeMenus()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-bold text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 hover:border-blue-500 transition">Capstone Project</a>
+      <div class="${mobileMenuClass} md:hidden absolute left-0 right-0 top-full z-40 border-b border-slate-200 bg-white/95 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95">
+        <div class="space-y-1 p-3">
+          <a href="#/roadmap" onclick="App.closeMenus()" class="block rounded-xl px-4 py-3 text-base font-bold text-slate-700 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-400">Roadmap</a>
+          <a href="#/project" onclick="App.closeMenus()" class="block rounded-xl px-4 py-3 text-base font-bold text-slate-700 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-400">Capstone Project</a>
         </div>
         ${user ? `
-          <div class="pt-5 pb-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <div class="flex items-center px-5 mb-4">
-              <div class="w-12 h-12 rounded-full bg-blue-200 dark:bg-blue-900 flex items-center justify-center text-blue-800 dark:text-blue-300 font-bold text-xl border-2 border-white dark:border-gray-700 shadow-sm">
+          <div class="border-t border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <div class="mb-3 flex items-center gap-3">
+              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-black text-white">
                 ${user.username.charAt(0).toUpperCase()}
               </div>
-              <div class="ml-4">
-                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase">Signed In</div>
-                <div class="text-lg font-bold text-gray-900 dark:text-white">${user.username}</div>
+              <div>
+                <div class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Signed In</div>
+                <div class="text-lg font-bold text-slate-900 dark:text-white">${user.username}</div>
               </div>
             </div>
             <div class="space-y-1">
-              <a href="#/dashboard" onclick="App.closeMenus()" class="block px-5 py-3 text-base font-bold text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 transition">Dashboard</a>
-              <button onclick="App.handleLogout()" class="block w-full text-left px-5 py-3 text-base font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition">Logout</button>
+              <a href="#/dashboard" onclick="App.closeMenus()" class="block rounded-xl px-4 py-3 text-base font-bold text-slate-700 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-400">Dashboard</a>
+              <button onclick="App.handleLogout()" class="block w-full rounded-xl px-4 py-3 text-left text-base font-bold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">Logout</button>
             </div>
           </div>
         ` : `
-          <div class="pt-5 pb-5 border-t border-gray-100 dark:border-gray-700 px-5">
-            <a href="#/login" onclick="App.closeMenus()" class="block text-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-4 rounded-xl font-bold shadow-md transition">Sign In</a>
+          <div class="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
+            <a href="#/login" onclick="App.closeMenus()" class="block rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-center text-base font-bold text-white shadow-md shadow-blue-500/20">Sign In</a>
           </div>
         `}
       </div>
     `;
+
+    requestAnimationFrame(() => {
+      this.syncSearchPanelPosition();
+    });
   },
 
   toggleDropdown(e) {
@@ -255,6 +297,7 @@ const App = {
     this.isMobileMenuOpen = false;
     this.renderNavbar();
     requestAnimationFrame(() => {
+      this.syncSearchPanelPosition();
       const input = document.getElementById('quickSearchInput');
       if (this.isSearchOpen && input) {
         input.focus();
@@ -413,7 +456,7 @@ const App = {
 
   renderRoadmap(container) {
     const coursesHtml = FLUTTER_COURSE_GROUPS.map((course, courseIndex) => {
-      const isOpen = courseIndex === 0 ? 'block' : 'hidden';
+      const isOpen = courseIndex === 0;
       const lessonCards = course.lessons.map((lesson, lessonIndex) => {
         const done = Store.isLessonComplete(lesson.id);
         return `
@@ -451,22 +494,50 @@ const App = {
               <svg class="course-toggle-icon w-6 h-6 text-gray-500 dark:text-gray-400 transition-transform duration-200" data-course-icon="${course.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </div>
           </button>
-          <div id="course-${course.id}" class="${isOpen} px-4 pb-4 pt-1 space-y-2">
-            ${lessonCards}
+          <div id="course-${course.id}" class="course-content ${isOpen ? 'is-open' : 'is-closed'} px-4 pb-4 pt-1 space-y-2">
+            <div class="course-inner">
+              ${lessonCards}
+            </div>
           </div>
         </div>
       `;
     }).join('');
 
+    const completed = Store.getCompletedLessons();
+    const overallPct = Math.round((completed.length / FLUTTER_LESSONS.length) * 100) || 0;
+
     container.innerHTML = `
       <div class="max-w-5xl mx-auto py-12 px-4 relative">
         <h1 class="text-4xl font-black mb-4 text-slate-950 dark:text-white tracking-[-0.05em]">Flutter Masterclass</h1>
         <p class="readable-copy text-xl mb-8 text-slate-700 dark:text-slate-300">Follow the structured path below, one course at a time.</p>
+
+        <div class="mb-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <div class="flex items-center justify-between gap-3 mb-2">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Roadmap progress</p>
+            <span class="text-lg font-black text-blue-600 dark:text-blue-400">${overallPct}%</span>
+          </div>
+          <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+            <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600" style="width:${overallPct}%"></div>
+          </div>
+        </div>
+
         <div class="space-y-3 relative pt-2 stagger">
           ${coursesHtml}
         </div>
       </div>
     `;
+
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.course-toggle-icon').forEach((icon) => {
+        const courseId = icon.dataset.courseIcon;
+        const panel = document.getElementById(`course-${courseId}`);
+        if (panel && panel.classList.contains('is-open')) {
+          icon.style.transform = 'rotate(180deg)';
+        } else {
+          icon.style.transform = 'rotate(0deg)';
+        }
+      });
+    });
   },
 
   toggleCourse(courseId) {
@@ -474,8 +545,9 @@ const App = {
     const icon = document.querySelector(`[data-course-icon="${courseId}"]`);
     if (!panel || !icon) return;
 
-    const isOpen = !panel.classList.contains('hidden');
-    panel.classList.toggle('hidden');
+    const isOpen = panel.classList.contains('is-open');
+    panel.classList.toggle('is-open', !isOpen);
+    panel.classList.toggle('is-closed', isOpen);
     icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
   },
 
@@ -669,38 +741,67 @@ const App = {
     const bookmarks = Store.getBookmarks();
     const pct = Math.round((completed.length / FLUTTER_LESSONS.length) * 100) || 0;
 
+    const nextLesson = FLUTTER_LESSONS.find(l => !completed.includes(l.id)) || FLUTTER_LESSONS[0];
+    const currentCourse = FLUTTER_COURSE_GROUPS.find(group => group.lessons.some(l => l.id === nextLesson.id));
+
     container.innerHTML = `
       <div class="max-w-5xl mx-auto py-12 px-4">
         <h1 class="text-4xl font-black mb-8 text-slate-950 dark:text-white tracking-[-0.05em]">Dashboard</h1>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="dashboard-grid grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
 
-          <div class="bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-700 dark:to-indigo-900 p-8 rounded-3xl shadow-lg text-white">
-            <h2 class="text-2xl font-bold mb-2">Hello, ${user.username}!</h2>
-            <p class="text-blue-100 mb-8">Here is your learning progress</p>
-            <div class="flex items-end gap-3 mb-2">
-              <span class="text-5xl font-black">${pct}%</span>
-              <span class="text-blue-100 font-medium mb-1">Completed</span>
+          <div class="dashboard-card overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 dark:from-blue-700 dark:via-blue-800 dark:to-indigo-900 p-7 rounded-[28px] shadow-[0_18px_40px_rgba(37,99,235,0.28)] text-white min-h-[260px] border border-white/10">
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-blue-100/80 mb-2">Welcome back</p>
+                <h2 class="text-3xl sm:text-4xl font-black tracking-[-0.06em] leading-none text-white">Hello, ${user.username}!</h2>
+              </div>
+              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 border border-white/10 shadow-inner">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m5-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
             </div>
-            <div class="w-full bg-black/20 rounded-full h-3 mt-4">
-              <div class="bg-white h-3 rounded-full" style="width:${pct}%"></div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Completed</p>
+                <p class="mt-2 text-2xl font-black text-white">${completed.length}</p>
+              </div>
+              <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Bookmarks</p>
+                <p class="mt-2 text-2xl font-black text-white">${bookmarks.length}</p>
+              </div>
+              <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Roadmap</p>
+                <p class="mt-2 text-2xl font-black text-white">${pct}%</p>
+              </div>
+              <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Next</p>
+                <p class="mt-2 text-sm font-bold text-white leading-tight">${currentCourse ? currentCourse.title.split(':')[0].trim() : 'Ready'}</p>
+              </div>
             </div>
-            <p class="text-sm mt-3 text-blue-100">${completed.length} of ${FLUTTER_LESSONS.length} lessons finished</p>
+
+            <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p class="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Current focus</p>
+              <p class="mt-2 text-base font-semibold text-white">${nextLesson.title}</p>
+            </div>
           </div>
 
-          <div class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-8 rounded-3xl shadow-sm">
-            <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-2">
-              <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg>
-              Your Bookmarks
-            </h2>
+          <div class="dashboard-card bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-6 rounded-3xl shadow-sm" style="max-height: 500px; overflow: hidden;">
+            <div class="flex items-center justify-between gap-3 mb-5">
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg>
+                Your Bookmarks
+              </h2>
+              <span class="inline-flex items-center justify-center min-w-[2rem] h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-bold px-2">${bookmarks.length}</span>
+            </div>
             ${bookmarks.length === 0
               ? '<p class="text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-center font-medium">No bookmarks yet.</p>'
-              : `<ul class="space-y-4">${bookmarks.map(id => {
+              : `<ul class="bookmark-scroll space-y-3 pr-1">${bookmarks.map(id => {
                   const l = FLUTTER_LESSONS.find(x => x.id === id);
                   return l ? `
                     <li>
-                      <a href="#/lesson/${id}" class="group flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 transition border border-transparent hover:border-blue-100 dark:hover:border-blue-900">
-                        <span class="font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400">${l.title}</span>
-                        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                      <a href="#/lesson/${id}" class="group flex items-center justify-between gap-3 p-3.5 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 transition border border-transparent hover:border-blue-100 dark:hover:border-blue-900">
+                        <span class="font-semibold text-gray-700 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 leading-snug">${l.title}</span>
+                        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                       </a>
                     </li>
                   ` : '';
